@@ -33,3 +33,38 @@
 ### Pruning
 - Days that are not followed by a day with moodscores are worthless.
 - Days without screen/ app data are worthless, except for mood data.
+
+
+# TASK 1A: EXPLORATORY DATA ANALYSIS 
+- Mood: 
+    - Target variable to predict. Days without mood score do not contain the data to properly predict
+      mood and can thus be discarded.
+    - Mood scores are logged by the user on the hour at semi-random intervals, usually between 1-3 hours
+      with long nightly breaks inbetween. Users usually self report around the time they wake up
+    - Bias can occur when taking the average reported score of the day since it is uncertain. But also
+      mood while sleeping should not be considered an option. Some days only have few datapoints, but 5 on average.
+- Arousal & Valence:
+    - Two self reported values that respectively hint at internal and external factors in the formation
+      of the mood score. 
+    - Is self reported with mood, and both suffer from the same drawbacks.
+
+- Activity:
+    - Automatically logged activity score, which logs a relative activity score every hour on the hour.
+    - Missing activity scores hint at the phone being turned off at the time of logging, supported by missing screen logging.
+      measurements.
+      - Somehow, scores can still be logged with the phone off
+    - Missing scores can not always simply be replaced with 0, unless at night.
+  
+- Screen & appCat:
+    - Logs the starting time and duration of a screentime/ app session. Screen is approximately
+     equal to the sum of appcat.
+    - Missing values represent the absense ofscreentime and can be taken as 0.
+    - When resampling into hours it should be considered whether time overflows into the next hour.
+    - When resampling into days, overflowing time can still be considered part of the previous day, but may bring bias for users with structural delayed ciarcadian rhythms.
+    - Overly long app usage may indicate a user has fallen asleep
+    - Different app types may directly correlate with a user's mood, some are too broad to corectly
+      categorize
+
+- Call & Sms:
+    - Logs whether a Call or SMS has been sent. 
+    - Missing values can be considered the absence of and thus 0.
