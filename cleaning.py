@@ -47,7 +47,19 @@ def loadData(fname: str) -> Tuple[pd.DataFrame, List[str]]:
     
     return rawSet, users
 
-def pruneDays(df: pd.DataFrame, users: List[str], method = "allMood", baseFrame: pd.DataFrame=None) -> pd.DataFrame:
+def remove_useTimeOutliers(df: pd.DataFrame, maxTime: datetime.timedelta = datetime.timedelta(hours=5)) -> pd.DataFrame:
+    """
+    Removes eggregeous time outliers from the dataset, such as negative numbers and times spanned longer than
+    a set amount.
+    
+    """
+    timeVars = ["screen"] + [index for index in df.columns if "appCat" in index]
+    for timeVar in timeVars:
+        df.loc[df[timeVar] < 0] = 0
+        df.loc[df[timeVar] > maxTime.total_seconds()] = 0
+    return df
+
+def pruneDays(df: pd.DataFrame, users: List[str], method = "longest", baseFrame: pd.DataFrame=None) -> pd.DataFrame:
     """
     Data pruning function selector, for convienicence.
 
@@ -124,6 +136,7 @@ def pruneDays_longest(df: pd.DataFrame, users: List[str],
     
     return pd.concat(outFrames, keys=users)
 
+
 def longestRange(dateRanges: List[Tuple[datetime.datetime,datetime.datetime]]):
     """
     Finds the longest daterange in a list of daterange tuples.
@@ -138,6 +151,7 @@ def longestRange(dateRanges: List[Tuple[datetime.datetime,datetime.datetime]]):
             longest = delta.days
     
     return dateRanges[best_index]
+
 
 def find_measuredDays(df: pd.DataFrame, users: List[str]) -> Dict[str, list[Tuple[datetime.date, datetime.date]]]:
     """
@@ -176,12 +190,17 @@ def resample_daily(df: pd.DataFrame, users: List[str]) -> pd.DataFrame:
     """
     # TODO:
     #       - Detect and remove outliers
+    #       - Decide on interpolation for activity, valence, arousal & mood.
 
     # Generate agg function profile (For resampler)
     sumKeys = [key for key in df.keys() if "appCat" in key]
     sumKeys.append("screen")
     sumKeys.append("sms")
     sumKeys.append("call")
+    sumKeys.append("activity") # Activity scores are logged hourly, but not logged when phone is off
+                               # as such, average activity will be far higher if subject turns off their phone when 
+                               # asleep. In resampling, this should manually be corrected as the mean w.r.t. 24H
+                               
     meanKeys = [key for key in df.keys() if key not in sumKeys]
 
     sumDict  = {key: "sum" for key in sumKeys}
@@ -192,33 +211,22 @@ def resample_daily(df: pd.DataFrame, users: List[str]) -> pd.DataFrame:
 
     for user in users:
         userFrame = df.loc[user].resample("1d").agg(aggDict)
+        userFrame["activity"] = userFrame["activity"] / 24
         subFrames.append(userFrame)
     
 
     outFrame = pd.concat(subFrames, keys=users)
-    outFrame["activity"] = outFrame["activity"].fillna(0)
+    #outFrame["activity"] = outFrame["activity"].fillna(0)
     return outFrame
 
-
-def resample_hourly(df: pd.DataFrame, users: List[str]) -> pd.DataFrame:
-    """
-    Resamples the dataset to a consistent hourly format rather than inconsistent timing.
-    """
-    # TODO: - Determine how to best handle non-subjective variables per hour
-    #       - Handle time overflow.
-    #       - detect and remove outliers
-
-    aggDict = {key: "sum" for key in df.keys()}
-
+def resample_hourly(df: pd.DataFrame, users: List[str]):
     subFrames = []
-
     for user in users:
-        userFrame = df.loc[user].resample("1h").agg(aggDict)
+        userFrame = df.loc[user].resample("1h").agg(pd.Series.sum, min_count=1)
         subFrames.append(userFrame)
-    
     outFrame = pd.concat(subFrames, keys=users)
-    return outFrame
 
+    return outFrame
 
 if __name__ == "__main__":
     main()
