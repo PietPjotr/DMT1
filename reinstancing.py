@@ -35,7 +35,6 @@ def reinstanceDataset(df: pd.DataFrame, users: List[str], period=5) -> pd.DataFr
         period: period in days to take average from.
     
     Returns: The instance based dataset.
-
     """
     timeCorrected = cleaning.remove_useTimeOutliers(df)
     byDay           = cleaning.resample_daily(df, users)
