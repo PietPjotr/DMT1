@@ -29,3 +29,13 @@ if __name__ == "__main__":
 screen is waarschijnlijk de hoeveelheid seconden van scherm aan staan vanaf
 het moment dat de timestamp begint.
 """
+"""
+structuur:
+
+{
+    userid1: {class1: [[time], [value]], class2: [[time], [value]], ...
+    userid2: ...
+    ...
+}
+
+"""
