@@ -15,7 +15,7 @@ def main(fname = "./Data/dataset_mood_smartphone.csv"):
     Main function for testing purposes
     """
     rawSet, users = loadData(fname)
-    
+
     prunedSet = pruneDays(rawSet, users)
     print(prunedSet)
     print(resample_daily(prunedSet, users))
@@ -27,25 +27,25 @@ def loadData(fname: str) -> Tuple[pd.DataFrame, List[str]]:
 
     Args:
         fname: Filepath of the csv File to load in
-    
+
     Returns: A tuple containing the pandas dataframe and the list of user ID's
     """
     with open(fname) as csvFile:
         rawSet = pd.read_csv(csvFile)
-    
+
     # gather user names for easy identification
-    users = pd.unique(rawSet["id"]) 
+    users = pd.unique(rawSet["id"])
 
     # Drop unessecary line index
-    rawSet.drop("Unnamed: 0", axis="columns", inplace=True) 
+    rawSet.drop("Unnamed: 0", axis="columns", inplace=True)
 
     # Convert date/time to datetime objects, to allow for easy temporal resampling
     timeStamps = rawSet["time"].apply(datetime.datetime.fromisoformat)
     rawSet["time"] = timeStamps
-    
+
     # reshape dataset into datapoints ordered by timestamp grouped by user.
     rawSet = pd.pivot_table(rawSet, index=["id" ,"time"], values="value", columns="variable")
-    
+
     return rawSet, users
 
 
@@ -66,7 +66,7 @@ def remove_useTimeOutliers(df: pd.DataFrame, maxTime: datetime.timedelta = datet
 
 
 def find_measuredDays(df: pd.DataFrame, users: List[str], mood=True, activity=True
-                      ) -> Dict[str, list[Tuple[datetime.date, datetime.date]]]:
+                      ) -> Dict[str, List[Tuple[datetime.date, datetime.date]]]:
     """
     Returns a dictionary of lists of start and end dates of mood measurement periods keyed by userID.
 
@@ -102,11 +102,11 @@ def find_measuredDays(df: pd.DataFrame, users: List[str], mood=True, activity=Tr
             if i == 0: continue
             diff = date - dates[i-1]
             assert isinstance(diff, datetime.timedelta) # To keep my vscode instance happy
-            
+
             if diff.days > 1: # If there is a gap of longer than one day, there must be a new range.
                 rangeList.append((copy.copy(rangeStart), copy.copy(dates[i-1])))
                 rangeStart = date
-        
+
         rangeList.append((copy.copy(rangeStart), copy.copy(dates[-1])))
         measureDays_out[user] = rangeList
 
@@ -137,13 +137,13 @@ def pruneDays(df: pd.DataFrame, users: List[str], method = "longest", baseFrame:
     if method.lower() == "longest":
         # Create a new frame with the longest streak of days with moodscore
         return pruneDays_longest(df, users, dateRanges, inclusive = False)
-    
+
     if method.lower() == "longestinc":
         # Create a new frame with the longest streak of days and the preceding day.
         return pruneDays_longest(df, users, dateRanges, inclusive = True)
 
 
-def pruneDays_allMood(df: pd.DataFrame, users: List[str], 
+def pruneDays_allMood(df: pd.DataFrame, users: List[str],
                       dateRanges: Dict[str,Tuple[datetime.datetime,datetime.datetime]]) -> pd.DataFrame:
     """
     Returns a dataset containing data from all days with recorded moodscores, for analysis.
@@ -161,12 +161,12 @@ def pruneDays_allMood(df: pd.DataFrame, users: List[str],
         pruned_user = pd.concat(pruned_userList)
 
         outFrames.append(pruned_user)
-    
+
     return pd.concat(outFrames, keys=users)
 
 
-def pruneDays_longest(df: pd.DataFrame, users: List[str], 
-                      dateRanges: Dict[str,List[Tuple[datetime.datetime,datetime.datetime]]], 
+def pruneDays_longest(df: pd.DataFrame, users: List[str],
+                      dateRanges: Dict[str,List[Tuple[datetime.datetime,datetime.datetime]]],
                       inclusive = False,) -> pd.DataFrame:
     """
     Returns a dataset containing data from all days with recorded moodscores from the longest uninterrupted
@@ -176,7 +176,7 @@ def pruneDays_longest(df: pd.DataFrame, users: List[str],
         df:     dataframe
         users:  userlist
         dateRanges: Dictionary of tuples keyed by userIds that represent the date ranges with mood scores.
-        inclusive:  If True, the day before the longest range of mood scores is included 
+        inclusive:  If True, the day before the longest range of mood scores is included
     """
     outFrames = []
 
@@ -187,7 +187,7 @@ def pruneDays_longest(df: pd.DataFrame, users: List[str],
 
         pruned_user = df.loc[user].loc[dateRange[0]:dateRange[1]]
         outFrames.append(pruned_user)
-    
+
     return pd.concat(outFrames, keys=users)
 
 
@@ -203,13 +203,13 @@ def longestRange(dateRanges: List[Tuple[datetime.datetime,datetime.datetime]]):
         if delta.days > longest:
             best_index = i
             longest = delta.days
-    
+
     return dateRanges[best_index]
 
 
 def resample_daily(df: pd.DataFrame, users: List[str]) -> pd.DataFrame:
     """
-    Resamples the dataset to a consistent daily format rather than inconsistent timing. Times and calls 
+    Resamples the dataset to a consistent daily format rather than inconsistent timing. Times and calls
     are summed, subjective scores are average.
 
     Average activity is taken as the sum of activity scores in a day, divided by waking hours (16)
@@ -222,9 +222,9 @@ def resample_daily(df: pd.DataFrame, users: List[str]) -> pd.DataFrame:
     sumKeys.append("sms")
     sumKeys.append("call")
     sumKeys.append("activity") # Activity scores are logged hourly, but not logged when phone is off
-                               # as such, average activity will be far higher if subject turns off their phone when 
+                               # as such, average activity will be far higher if subject turns off their phone when
                                # asleep. In resampling, this should manually be corrected as the mean w.r.t. 24H Day & 8hr sleep
-                               
+
     meanKeys = [key for key in df.keys() if key not in sumKeys]
 
     sumDict  = {key: "sum" for key in sumKeys}
@@ -237,7 +237,7 @@ def resample_daily(df: pd.DataFrame, users: List[str]) -> pd.DataFrame:
         userFrame = df.loc[user].resample("1d").agg(aggDict)
         userFrame["activity"] = userFrame["activity"] / WAKING_HOURS
         subFrames.append(userFrame)
-    
+
 
     outFrame = pd.concat(subFrames, keys=users)
     return outFrame
